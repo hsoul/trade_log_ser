@@ -57,7 +57,7 @@ class TradeLogController extends Controller {
 
   async list() {
     const { ctx, app } = this
-    const { filter_date, page = 1, page_size = 5, time_filter_type = 'all', dir_filter_type = 'all',} = ctx.query
+    const { filter_date, end_date, page = 1, page_size = 5, time_filter_type = 'all', dir_filter_type = 'all', trade_type = 'all'} = ctx.query
 
     try {
       let user_id
@@ -66,29 +66,52 @@ class TradeLogController extends Controller {
       if (!decode)
         return
       user_id = decode.id
-      const all_list = await ctx.service.trade.list(user_id, 'id, start_time, end_time, num, dir, to_rate, income')
-      console.log(all_list, all_list)
-      const time_list = all_list.filter(item => {
-        console.log(item.start_time, moment(item.start_time * 1000), moment(item.start_time * 1000).format('YYYY-MM'), filter_date)
+
+      if (time_filter_type == 'period')
+      {
+        if (!filter_date || !end_date) {
+          ctx.body = {
+            code: 400,
+            msg: '必要参数不完整',
+            data: null
+          }
+          return
+        }
+      }
+
+      const all_list = await ctx.service.trade.list(user_id, 'id, trade_type, strategy, start_time, end_time, num, dir, to_rate, income')
+      // console.log(all_list, all_list)
+      const time_list = all_list.filter(item => { // 日期过滤
         if (time_filter_type == 'all') 
           return true
         else if (time_filter_type == 'year')
           return moment(item.start_time * 1000).format('YYYY') === filter_date
         else if (time_filter_type == 'month')
           return moment(item.start_time * 1000).format('YYYY-MM') === filter_date
-        else if (time_filter_type == 'day')
+        else if (time_filter_type == 'date')
           return moment(item.start_time * 1000).format('YYYY-MM-DD') === filter_date
+        else if (time_filter_type == 'period')
+          return moment(item.start_time * 1000).isBetween(moment(filter_date), moment(end_date))
       })
-      console.log("time_list", time_list)
-      const dir_list = time_list.filter(item => {
+      // console.log("time_list", time_list)
+      const dir_list = time_list.filter(item => { // 方向过滤
+        // console.log("item.dir", ID_DIR_TYPE[dir_filter_type] )
         if (dir_filter_type == 'all')
           return true
         else
-          return item.dir === dir_filter_type
+          return item.dir === ID_DIR_TYPE[dir_filter_type]
+      })
+
+      const trade_type_list = dir_list.filter(item => { // 交易类型过滤
+        // console.log("item.dir", trade_type, ID_TRADE_TYPE[trade_type] )
+        if (trade_type == 'all')
+          return true
+        else
+          return item.trade_type === ID_TRADE_TYPE[trade_type]
       })
 
       // console.log("dir_list", dir_list)
-      const prop_filter_list = dir_list.map(({start_reason, ...rest}) => rest) // 过滤掉不需要的字段
+      const prop_filter_list = trade_type_list.map(({start_reason, ...rest}) => rest) // 过滤掉不需要的字段
 
       let list_map = prop_filter_list.reduce((curr, item) => { // curr 默认是一个空数组
         const date = moment(item.start_time * 1000).format('YYYY-MM-DD')

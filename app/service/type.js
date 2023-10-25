@@ -3,16 +3,31 @@
 const Service = require('egg').Service
 
 const DIR_TYPE = {
-  '多': 1,
-  '空': 2,
-  '总': 3,
+  '多': "more",
+  '空': "less",
+  '总': "all",
+}
+
+global.ID_DIR_TYPE = {
+  more: '多',
+  less: '空',
+  all: 'all',
 }
 
 const TRADE_TYPE = {
-  '长': 1,
-  '中': 2,
-  '短': 3,
-  '极': 4,
+  '长': "long",
+  '中': "middle",
+  '短': "short",
+  '极': "ponit",
+  '总': "all",
+}
+
+global.ID_TRADE_TYPE = {
+   long: '长',
+   middle: '中',
+   short: '短',
+   ponit: '极',
+   all: 'all',
 }
 
 class TypeService extends Service {
@@ -34,13 +49,14 @@ class TypeService extends Service {
       })
       
       let dir = []
+      dir.push({id: DIR_TYPE["总"], name: "总"})
       Object.keys(filter_types.dir).forEach((key) => {
         if (DIR_TYPE[key])
           dir.push({id: DIR_TYPE[key], name: key})
       })
-      dir.push({id: DIR_TYPE["总"], name: "总"})
 
       let trade_type = []
+      trade_type.push({id: TRADE_TYPE["总"], name: "总"})
       Object.keys(filter_types.trade_type).forEach((key) => {
         if (TRADE_TYPE[key])
           trade_type.push({id: TRADE_TYPE[key], name: key})
