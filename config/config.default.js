@@ -74,6 +74,13 @@ module.exports = appInfo => {
     upLoadDir: 'app/public/upload',
   };
 
+  // config.cluster = {
+  //   https: {
+  //     key: './server.key',
+  //     cert: './server.crt'
+  //   }
+  // };
+
   return {
     ...config,
     ...userConfig,
