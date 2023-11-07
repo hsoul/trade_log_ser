@@ -7,8 +7,36 @@ const Controller = require('egg').Controller
 class TradeLogController extends Controller {
   async add() {
     const { ctx, app } = this
-    const {start_time, end_time, num, dir, start_reason, to_rate, promise_money, start_price, finish_price, force_price, income, summarize, exit_reason} = this.ctx.request.body
-    if (!start_time || !num || !dir || !start_reason || !to_rate || !promise_money || !start_price || !force_price) {
+    const {
+      start_time, 
+      end_time, 
+      num, 
+      dir, 
+      trade_type, 
+      strategy, 
+      start_reason, 
+      to_rate, 
+      start_price,
+      stop_loss,
+      promise_money, 
+      finish_price, 
+      force_price, 
+      income, 
+      summarize, 
+      exit_reason
+    } = this.ctx.request.body
+    if (!start_time || 
+      !num || 
+      !dir || 
+      !trade_type || 
+      !strategy || 
+      !start_reason || 
+      !to_rate || 
+      !promise_money || 
+      !stop_loss ||
+      !start_price || 
+      !force_price) 
+    {
       this.ctx.body = {
         code: 400,
         msg: '必要参数不完整',
@@ -29,9 +57,12 @@ class TradeLogController extends Controller {
         end_time,
         num,
         dir,
+        trade_type, 
+        strategy, 
         start_reason,
         to_rate,
         promise_money,
+        stop_loss,
         start_price,
         finish_price,
         force_price,
@@ -40,6 +71,14 @@ class TradeLogController extends Controller {
         exit_reason,
         user_id
       })
+      if (result == null) {
+        ctx.body = {
+          code: 500,
+          msg: '添加失败',
+          data: null
+        }
+        return
+      }
       ctx.body = {
         code: 200,
         msg: '添加成功',
@@ -101,6 +140,7 @@ class TradeLogController extends Controller {
         else
           return item.dir === ID_DIR_TYPE[dir_filter_type]
       })
+      // console.log("dir_list", dir_list)
 
       const trade_type_list = dir_list.filter(item => { // 交易类型过滤
         // console.log("item.dir", trade_type, ID_TRADE_TYPE[trade_type] )
@@ -110,8 +150,9 @@ class TradeLogController extends Controller {
           return item.trade_type === ID_TRADE_TYPE[trade_type]
       })
 
-      // console.log("dir_list", dir_list)
+      // console.log("trade_type_list", trade_type_list)
       const prop_filter_list = trade_type_list.map(({start_reason, ...rest}) => rest) // 过滤掉不需要的字段
+      // console.log("prop_filter_list", prop_filter_list)
 
       let list_map = prop_filter_list.reduce((curr, item) => { // curr 默认是一个空数组
         const date = moment(item.start_time * 1000).format('YYYY-MM-DD')
@@ -135,7 +176,7 @@ class TradeLogController extends Controller {
         }
 
         return curr
-      }, []).sort((a, b) => moment(a.start_time * 1000).valueOf() - moment(b.start_time * 1000).valueOf()) // 时间顺序为倒序
+      }, []).sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf()) // 时间顺序为倒序
 
       const filter_list_map = list_map.slice((page - 1) * page_size, page * page_size)
 
@@ -211,7 +252,25 @@ class TradeLogController extends Controller {
 
   async update() {
     const { ctx, app } = this
-    const { id, start_time, end_time, num, dir, start_reason, to_rate, promise_money, start_price, finish_price, force_price, income, summarize, exit_reason } = ctx.request.body
+    const { 
+      id, 
+      start_time,
+      end_time,
+      num, 
+      dir, 
+      trade_type, 
+      strategy, 
+      start_reason, 
+      to_rate, 
+      stop_loss,
+      promise_money, 
+      start_price, 
+      finish_price, 
+      force_price, 
+      income, 
+      summarize, 
+      exit_reason 
+    } = ctx.request.body
     if (!id)  {
       ctx.body = {
         code: 400,
@@ -220,6 +279,7 @@ class TradeLogController extends Controller {
       }
       return
     }
+    console.log("update", start_reason)
     try {
       let user_id
       const token = ctx.request.header.authorization
@@ -233,8 +293,11 @@ class TradeLogController extends Controller {
         end_time,
         num,
         dir,
+        trade_type, 
+        strategy, 
         start_reason,
         to_rate,
+        stop_loss,
         promise_money,
         start_price,
         finish_price,
@@ -324,17 +387,17 @@ class TradeLogController extends Controller {
     // 最大连续盈利日数 = 盈利次数
 
     try {
-      const dir_filter_list = list.filter(item => {
-        if (dir == 'all') 
-          return true
-        else if (dir == item.dir)
-          return true
-        return false;
-      })
+      // const dir_filter_list = list.filter(item => {
+      //   if (dir == 'all') 
+      //     return true
+      //   else if (dir == item.dir)
+      //     return true
+      //   return false;
+      // })
 
-      console.log("dir_filter_list", dir_filter_list)
+      // console.log("dir_filter_list", dir_filter_list)
 
-      const iter_data = dir_filter_list.reduce((obj, item) => {
+      const iter_data = list.reduce((obj, item) => {
         obj['total_income'] += Number(item.income)
         obj['total_num'] += 1
         if (item.income > 0) {
@@ -363,7 +426,7 @@ class TradeLogController extends Controller {
         end_time: 0,
       })
 
-      console.log(iter_data)
+      // console.log(iter_data)
 
       // 计算各项指标
       const total_investment = 100 // 总投入10000先写死,后续加一个账单表,记录投入支出
@@ -375,8 +438,9 @@ class TradeLogController extends Controller {
       const average_profit_loss_ratio = average_profit_rate / win_rate // 平均盈亏比率
       const monthly_profit_rate = total_profit_rate / (moment(iter_data.start_time).diff(moment(iter_data.end_time), 'days') + 1) * 30
 
-      const day_filter_list = dir_filter_list.reduce((arr, item) => {
-        const date = moment(item.start_time).format('YYYY-MM-DD')
+      const day_filter_list = list.reduce((arr, item) => {
+        const date = moment(item.start_time*1000).format('YYYY-MM-DD')
+        console.log("date", date)
         const index = arr.findIndex(item => item.date === date)
         if (index === -1) {
           arr.push({ date, loss: Number(item.income), profilt: 0, list_begin_time: item.start_time, list_end_time: item.start_time })
@@ -389,11 +453,13 @@ class TradeLogController extends Controller {
         return arr
       }, [])
 
-      const max_loss_per_trade = -1 * Math.max(...dir_filter_list.map(item => -1 * Number(item.income))); // 单笔最大亏损
+      console.log("trade_days", day_filter_list)
+
+      const max_loss_per_trade = -1 * Math.max(...list.map(item => -1 * Number(item.income))); // 单笔最大亏损
       const max_loss_per_day = -1 * Math.min(...day_filter_list.map(item => -1 * Number(item.loss))) // 单日最大亏损
       const average_loss_per_loss_trade = iter_data.total_loss_num / iter_data.total_loss_times // 亏损单平均亏损
       const average_loss_rate_per_loss_trade = average_loss_per_loss_trade / total_investment // 亏损单平均亏损率
-      const max_consecutive_loss_days = dir_filter_list.reduce((obj, item) => { // 最大连续亏损日数
+      const max_consecutive_loss_days = list.reduce((obj, item) => { // 最大连续亏损日数
         if (Number(item.income) < 0) {
           obj.current += 1
           obj.max = Math.max(obj.max, obj.current)
@@ -403,11 +469,11 @@ class TradeLogController extends Controller {
         return obj
       }, { current: 0, max: 0 }).max
 
-      const max_profit_per_trade = Math.max(...dir_filter_list.map(item => Number(item.income))) // 单笔最大盈利
+      const max_profit_per_trade = Math.max(...list.map(item => Number(item.income))) // 单笔最大盈利
       const max_profit_per_day = Math.max(...day_filter_list.map(item => item.profit)) // 单日最大盈利
       const average_profit_per_win_trade = iter_data.total_win_num / iter_data.total_win_times // 盈利单平均盈利
       const average_profit_rate_per_win_trade = average_profit_per_win_trade / total_investment // 盈利单平均盈利率
-      const max_consecutive_win_days = dir_filter_list.reduce((obj, item) => { // 最大连续盈利日数 = 盈利次数
+      const max_consecutive_win_days = list.reduce((obj, item) => { // 最大连续盈利日数 = 盈利次数
         if (Number(item.income) > 0) {
           obj.current += 1
           obj.max = Math.max(obj.max, obj.current)
@@ -439,6 +505,9 @@ class TradeLogController extends Controller {
         max_consecutive_win_days,
         trade_start_day: moment(iter_data.start_time * 1000).format('YYYY-MM-DD'),
         trade_end_day: moment(iter_data.end_time * 1000).format('YYYY-MM-DD'),
+        total_win_times: iter_data.total_win_times,
+        total_loss_times: iter_data.total_loss_times,
+        trade_days: day_filter_list.length,
       }
     } catch (error) {
       console.log(error)
@@ -448,14 +517,15 @@ class TradeLogController extends Controller {
 
   async data() {
     const { ctx, app } = this
-    const { date, begin_date, end_date , dir = 'all'} = ctx.query
+    const { date, begin_date, end_date , dir = 'all', trade_type = 'all', strategy = 'all'} = ctx.query
     const token = ctx.request.header.authorization
     const decode = await app.jwt.verify(token, app.config.jwt.secret)
     if (!decode)
       return
     let user_id = decode.id
+    console.log("data", date, begin_date, end_date, dir, trade_type)
     try {
-      const all_list = await ctx.service.trade.list(user_id, 'id, start_time, end_time, num, dir, to_rate, income')
+      const all_list = await ctx.service.trade.list(user_id, 'id, trade_type, strategy, start_time, end_time, num, dir, to_rate, income')
       const time_list = all_list.filter(item => {
         if (date){
           return moment(item.start_time * 1000).format('YYYY-MM') === date
@@ -469,8 +539,26 @@ class TradeLogController extends Controller {
         else
           return true;
       })
-      const ret_data = this.summarize(time_list, dir)
-      console.log(ret_data)
+
+      const dir_list = time_list.filter(item => { // 方向过滤
+        console.log("item.dir", ID_DIR_TYPE[dir], dir, item.dir)
+        if (dir == 'all')
+          return true
+        else
+          return item.dir === ID_DIR_TYPE[dir]
+      })
+
+      const trade_type_list = dir_list.filter(item => { // 交易类型过滤
+        if (trade_type == 'all')
+          return true
+        else
+          return item.trade_type === ID_TRADE_TYPE[trade_type]
+      })
+
+      console.log("trade_type_list", trade_type_list)
+
+      const ret_data = this.summarize(trade_type_list, dir)
+      // console.log(ret_data)
       ctx.body = {
         code: 200,
         msg: '获取成功',
