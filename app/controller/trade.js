@@ -443,10 +443,10 @@ class TradeLogController extends Controller {
         console.log("date", date)
         const index = arr.findIndex(item => item.date === date)
         if (index === -1) {
-          arr.push({ date, loss: Number(item.income), profilt: 0, list_begin_time: item.start_time, list_end_time: item.start_time })
+          arr.push({ date, loss: Number(item.income) < 0 ? Number(item.income) : 0, profit: Number(item.income) > 0 ? Number(item.income) : 0, list_begin_time: item.start_time, list_end_time: item.start_time })
         } else {
           if (Number(item.income) > 0)
-            arr[index].profilt += Number(item.income)
+            arr[index].profit += Number(item.income)
           else
             arr[index].loss += Number(item.income)
         }
@@ -456,7 +456,7 @@ class TradeLogController extends Controller {
       console.log("trade_days", day_filter_list)
 
       const max_loss_per_trade = -1 * Math.max(...list.map(item => -1 * Number(item.income))); // 单笔最大亏损
-      const max_loss_per_day = -1 * Math.min(...day_filter_list.map(item => -1 * Number(item.loss))) // 单日最大亏损
+      const max_loss_per_day = Math.min(...day_filter_list.map(item => Number(item.loss))) // 单日最大亏损
       const average_loss_per_loss_trade = iter_data.total_loss_num / iter_data.total_loss_times // 亏损单平均亏损
       const average_loss_rate_per_loss_trade = average_loss_per_loss_trade / total_investment // 亏损单平均亏损率
       const max_consecutive_loss_days = list.reduce((obj, item) => { // 最大连续亏损日数
@@ -483,23 +483,26 @@ class TradeLogController extends Controller {
         return obj
       }, { current: 0, max: 0 }).max
 
+      console.log("max_consecutive_win_days", max_loss_per_day, max_profit_per_day)
+
       // 返回计算结果
       return {
         total_investment,
         total_profit,
+        total_loss_num: iter_data.total_loss_num,
         total_num,
         total_profit_rate,
         average_profit_rate,
         win_rate,
         average_profit_loss_ratio,
         monthly_profit_rate,
-        max_loss_per_trade,
-        max_loss_per_day,
+        max_loss_per_trade: max_loss_per_trade < 0 ? max_loss_per_trade : 0,
+        max_loss_per_day: max_loss_per_day < 0 ? max_loss_per_day : 0,
         average_loss_per_loss_trade,
         average_loss_rate_per_loss_trade,
         max_consecutive_loss_days,
-        max_profit_per_trade,
-        max_profit_per_day,
+        max_profit_per_trade: max_profit_per_trade > 0 ? max_profit_per_trade : 0,
+        max_profit_per_day: max_profit_per_day > 0 ? max_profit_per_day : 0,
         average_profit_per_win_trade,
         average_profit_rate_per_win_trade,
         max_consecutive_win_days,
@@ -555,10 +558,10 @@ class TradeLogController extends Controller {
           return item.trade_type === ID_TRADE_TYPE[trade_type]
       })
 
-      console.log("trade_type_list", trade_type_list)
+      // console.log("trade_type_list", trade_type_list)
 
       const ret_data = this.summarize(trade_type_list, dir)
-      // console.log(ret_data)
+      console.log(ret_data)
       ctx.body = {
         code: 200,
         msg: '获取成功',
