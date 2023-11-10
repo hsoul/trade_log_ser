@@ -96,7 +96,7 @@ class TradeLogController extends Controller {
 
   async list() {
     const { ctx, app } = this
-    const { filter_date, end_date, page = 1, page_size = 5, time_filter_type = 'all', dir_filter_type = 'all', trade_type = 'all'} = ctx.query
+    const { filter_date, end_date, page = 1, page_size = 5, time_filter_type = 'all', dir_filter_type = 'all', trade_type = 'all', strategy = 'all'} = ctx.query
 
     try {
       let user_id
@@ -150,8 +150,15 @@ class TradeLogController extends Controller {
           return item.trade_type === ID_TRADE_TYPE[trade_type]
       })
 
+      const strategy_type_list = trade_type_list.filter(item => { // 交易类型过滤
+        if (strategy == 'all')
+          return true
+        else
+          return item.strategy === strategy
+      })
+
       // console.log("trade_type_list", trade_type_list)
-      const prop_filter_list = trade_type_list.map(({start_reason, ...rest}) => rest) // 过滤掉不需要的字段
+      const prop_filter_list = strategy_type_list.map(({start_reason, ...rest}) => rest) // 过滤掉不需要的字段
       // console.log("prop_filter_list", prop_filter_list)
 
       let list_map = prop_filter_list.reduce((curr, item) => { // curr 默认是一个空数组
@@ -180,7 +187,7 @@ class TradeLogController extends Controller {
 
       const filter_list_map = list_map.slice((page - 1) * page_size, page * page_size)
 
-      let total_income = dir_list.reduce((num, item) => {
+      let total_income = strategy_type_list.reduce((num, item) => {
         if (item.income > 0) {
           num += Number(item.income)
           return num
@@ -188,7 +195,7 @@ class TradeLogController extends Controller {
         return num
       }, 0)
 
-      let total_out = dir_list.reduce((num, item) => {
+      let total_out = strategy_type_list.reduce((num, item) => {
         if (item.income < 0) {
           num += Number(item.income)
           return num
@@ -558,9 +565,16 @@ class TradeLogController extends Controller {
           return item.trade_type === ID_TRADE_TYPE[trade_type]
       })
 
+      const strategy_type_list = trade_type_list.filter(item => { // 交易类型过滤
+        if (strategy == 'all')
+          return true
+        else
+          return item.strategy === strategy
+      })
+
       // console.log("trade_type_list", trade_type_list)
 
-      const ret_data = this.summarize(trade_type_list, dir)
+      const ret_data = this.summarize(strategy_type_list, dir)
       console.log(ret_data)
       ctx.body = {
         code: 200,
